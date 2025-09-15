@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PricePeek - Find the Best Deals</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .product-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .coupon-code {
+            position: relative;
+            overflow: hidden;
+        }
+        .coupon-code::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px dashed #3B82F6;
+            border-radius: 0.5rem;
+            pointer-events: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3B82F6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <i class="fas fa-money-bill-wave text-blue-600 text-2xl mr-2"></i>
+                    <span class="text-xl font-bold text-blue-600">PricePeek</span>
+                </div>
+                
+                <div class="hidden md:flex space-x-8">
+                    <a href="#" class="text-gray-700 hover:text-blue-600">Home</a>
+                    <a href="#" class="text-gray-700 hover:text-blue-600">Trending</a>
+                    <a href="#" class="text-gray-700 hover:text-blue-600">Categories</a>
+                    <a href="#" class="text-gray-700 hover:text-blue-600">Deals</a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button id="loginBtn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-50">Login</button>
+                    <button id="signupBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-16">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">Find the Best Deals in Seconds</h1>
+            <p class="text-xl mb-8">Compare prices across all major online stores and save money on every purchase</p>
+            
+            <div class="max-w-2xl mx-auto relative">
+                <input type="text" id="searchInput" placeholder="Search for products (e.g., iPhone 16, Samsung TV)" 
+                    class="w-full py-4 px-6 rounded-full text-gray-800 shadow-lg">
+                <button id="searchBtn" class="absolute right-2 top-2 bg-blue-600 text-white py-2 px-6 rounded-full hover:bg-blue-700">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            
+            <div class="mt-6 flex flex-wrap justify-center gap-2">
+                <span class="bg-white bg-opacity-20 rounded-full px-4 py-2 cursor-pointer popular-search">iPhone 16</span>
+                <span class="bg-white bg-opacity-20 rounded-full px-4 py-2 cursor-pointer popular-search">MacBook Pro</span>
+                <span class="bg-white bg-opacity-20 rounded-full px-4 py-2 cursor-pointer popular-search">Sony Headphones</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="container mx-auto px-4 py-12">
+        <h2 id="resultsTitle" class="text-3xl font-bold text-center mb-2">Search Results for "iPhone 16"</h2>
+        <p class="text-gray-600 text-center mb-8">Prices from top retailers updated today</p>
+        
+        <!-- Filter/Sort Bar -->
+        <div class="flex flex-wrap justify-between items-center mb-6 bg-white p-4 rounded-lg shadow">
+            <div class="mb-4 md:mb-0">
+                <span class="font-semibold mr-2">Sort by:</span>
+                <select id="sortSelect" class="border rounded px-3 py-2">
+                    <option value="best-match">Best Match</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Rating</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <span class="font-semibold">Filters:</span>
+                <label class="flex items-center">
+                    <input type="checkbox" id="freeShippingFilter" class="mr-2"> Free Shipping
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="couponsFilter" class="mr-2"> Coupons Available
+                </label>
+            </div>
+        </div>
+        
+        <!-- Product Grid -->
+        <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Product cards will be dynamically inserted here -->
+        </div>
+        
+        <!-- Best Price Indicator -->
+        <div id="bestPriceIndicator" class="mt-10 bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-trophy text-3xl text-yellow-500 mr-4"></i>
+                <div>
+                    <h3 id="bestPriceText" class="text-xl font-bold">Best Price Found: $1,179 at Best Buy</h3>
+                    <p class="text-gray-600">You save $120 compared to the original price</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="bg-gray-100 py-12">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-search text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">1. Search for a Product</h3>
+                    <p class="text-gray-600">Enter the product name you're looking for in the search bar.</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chart-line text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">2. Compare Prices</h3>
+                    <p class="text-gray-600">See prices from all major online retailers in one place.</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-piggy-bank text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">3. Save Money</h3>
+                    <p class="text-gray-600">Choose the best deal and use available coupons to save even more.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Auth Modals -->
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Login to Your Account</h3>
+                <button id="closeLoginModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="email">Email</label>
+                    <input type="email" id="loginEmail" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2" for="password">Password</label>
+                    <input type="password" id="loginPassword" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+                    Login
+                </button>
+            </form>
+            
+            <div class="mt-4 text-center">
+                <a href="#" class="text-blue-600 hover:underline">Forgot your password?</a>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Don't have an account? <a href="#" id="switchToSignup" class="text-blue-600 hover:underline">Sign up</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div id="signupModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Create an Account</h3>
+                <button id="closeSignupModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="signupForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="name">Full Name</label>
+                    <input type="text" id="name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2" for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+                    Create Account
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Already have an account? <a href="#" id="switchToLogin" class="text-blue-600 hover:underline">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loader -->
+    <div id="loader">
+        <div class="loader"></div>
+        <p class="text-center mt-2">Searching for products...</p>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h4 class="text-xl font-bold mb-4">PricePeek</h4>
+                    <p class="text-gray-400">Find the best deals across all major online stores and save money on every purchase.</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white">About Us</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Contact</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Careers</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Cookie Policy</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Connect</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2023 PricePeek. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const popularSearchBtns = document.querySelectorAll('.popular-search');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsTitle = document.getElementById('resultsTitle');
+        const productGrid = document.getElementById('productGrid');
+        const bestPriceIndicator = document.getElementById('bestPriceIndicator');
+        const bestPriceText = document.getElementById('bestPriceText');
+        const loader = document.getElementById('loader');
+        
+        // Modal functionality
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const loginModal = document.getElementById('loginModal');
+        const signupModal = document.getElementById('signupModal');
+        const closeLoginModal = document.getElementById('closeLoginModal');
+        const closeSignupModal = document.getElementById('closeSignupModal');
+        const switchToSignup = document.getElementById('switchToSignup');
+        const switchToLogin = document.getElementById('switchToLogin');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        
+        // Show/hide loader
+        function showLoader() {
+            loader.style.display = 'block';
+        }
+        
+        function hideLoader() {
+            loader.style.display = 'none';
+        }
+        
+        // Update the search functionality
+        const searchProducts = async (query) => {
+            showLoader();
+            try {
+                // Make the actual API call
+                const response = await fetch(`http://localhost:5000/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Define retailer-specific image and product URLs
+                const retailerUrls = {
+                    "Amazon": {
+                        imageUrl: "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=p-jpg",
+                        baseUrl: "https://www.amazon.com"
+                    },
+                    "Best Buy": {
+                        imageUrl: "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-bluetitanium?wid=5120&hei=2880&fmt=p-jpg",
+                        baseUrl: "https://www.bestbuy.com"
+                    },
+                    "Walmart": {
+                        imageUrl: "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-whitetitanium?wid=5120&hei=2880&fmt=p-jpg",
+                        baseUrl: "https://www.walmart.com"
+                    }
+                };
+                
+                // Transform the API response to match our display format
+                const products = data.results.map(product => ({
+                    ...product,
+                    imageUrl: retailerUrls[product.store]?.imageUrl || `https://via.placeholder.com/600x400?text=${encodeURIComponent(product.name)}`,
+                    productUrl: retailerUrls[product.store]?.baseUrl + "/ip/iPhone-16-Pro-Max",
+                            {
+                                name: `${query} Pro Max 256GB`,
+                                description: `Latest ${query} with advanced features`,
+                                store: "Amazon",
+                                price: 1199,
+                                originalPrice: 1299,
+                                discount: 100,
+                                rating: 4.5,
+                                reviews: 2148,
+                                coupon: "EXTRA10",
+                                couponDescription: "Additional 10% off with code",
+                                features: ["Free shipping", "Delivered by Sep 28", "30-day return policy"]
+                            },
+                            {
+                                name: `${query} Pro Max 256GB`,
+                                description: `Latest ${query} with advanced features`,
+                                store: "Best Buy",
+                                price: 1179,
+                                originalPrice: 1299,
+                                discount: 120,
+                                rating: 4.0,
+                                reviews: 1872,
+                                coupon: "BESTBUY15",
+                                couponDescription: "15% off for new customers",
+                                features: ["Free shipping", "Delivered by Sep 30", "In-store pickup available"]
+                            },
+                            {
+                                name: `${query} Pro Max 256GB`,
+                                description: `Latest ${query} with advanced features`,
+                                store: "Walmart",
+                                price: 1189,
+                                originalPrice: 1299,
+                                discount: 110,
+                                rating: 4.8,
+                                reviews: 3045,
+                                coupon: null,
+                                couponDescription: null,
+                                features: ["Free shipping", "Delivered by Sep 25", "90-day return policy"],
+                                limitedTime: true
+                            }
+                        ]
+                    };
+                    
+                    displayResults(mockData);
+                    hideLoader();
+                }, 1500);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to search products');
+                hideLoader();
+            }
+        };
+        
+        // Display search results
+        function displayResults(data) {
+            resultsTitle.textContent = `Search Results for "${data.query}"`;
+            
+            // Clear previous results
+            productGrid.innerHTML = '';
+            
+            // Find best price
+            let bestPrice = Infinity;
+            let bestStore = '';
+            
+            data.products.forEach(product => {
+                if (product.price < bestPrice) {
+                    bestPrice = product.price;
+                    bestStore = product.store;
+                }
+            });
+            
+            // Update best price indicator
+            bestPriceText.textContent = `Best Price Found: $${bestPrice} at ${bestStore}`;
+            bestPriceIndicator.classList.remove('hidden');
+            
+            // Add products to grid
+            data.products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card bg-white rounded-lg shadow overflow-hidden';
+                
+                // Generate star rating HTML
+                let starsHtml = '';
+                const fullStars = Math.floor(product.rating);
+                const hasHalfStar = product.rating % 1 !== 0;
+                
+                for (let i = 0; i < fullStars; i++) {
+                    starsHtml += '<i class="fas fa-star"></i>';
+                }
+                
+                if (hasHalfStar) {
+                    starsHtml += '<i class="fas fa-star-half-alt"></i>';
+                }
+                
+                const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+                for (let i = 0; i < emptyStars; i++) {
+                    starsHtml += '<i class="far fa-star"></i>';
+                }
+                
+                // Generate features HTML
+                let featuresHtml = '';
+                product.features.forEach(feature => {
+                    featuresHtml += `<li class="mb-1"><i class="fas fa-check text-green-500 mr-2"></i> ${feature}</li>`;
+                });
+                
+                // Create product card HTML
+                productCard.innerHTML = `
+                    <div class="p-6">
+                        <!-- Product Image with Link -->
+                        <a href="${product.productUrl}" target="_blank" class="block relative w-full h-64 mb-6 overflow-hidden rounded-lg bg-gray-100 group">
+                            <img src="${product.imageUrl}" 
+                                 alt="${product.name}" 
+                                 class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105">
+                            ${product.discount ? `
+                            <div class="absolute top-2 right-2 bg-red-500 text-white px-3 py-1.5 rounded-full text-sm font-bold">
+                                Save $${product.discount}
+                            </div>` : ''}
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-300"></div>
+                        </a>
+                        </div>
+                        
+                        <!-- Product Info -->
+                        <div class="mb-6">
+                            <h3 class="font-bold text-xl mb-2">${product.name}</h3>
+                            <p class="text-gray-600">${product.description}</p>
+                        </div>
+                        
+                        <!-- Price Comparison Box -->
+                        <div class="bg-blue-50 rounded-lg p-4 mb-4">
+                            <div class="flex items-center justify-between mb-4 pb-2 border-b border-blue-100">
+                                <div class="flex items-center">
+                                    <img src="https://logo.clearbit.com/${product.store.toLowerCase().replace(' ', '')}.com" 
+                                         onerror="this.src='https://via.placeholder.com/32'" 
+                                         alt="${product.store}"
+                                         class="w-8 h-8 rounded-full mr-3">
+                                    <span class="font-semibold text-lg">${product.store}</span>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-2xl font-bold text-green-700">$${product.price}</span>
+                                    ${product.originalPrice > product.price ? `
+                                    <span class="text-sm text-red-600 line-through">$${product.originalPrice}</span>` : ''}
+                                </div>
+                            </div>
+                        
+                            <!-- Rating and Reviews -->
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center text-yellow-400">
+                                    ${starsHtml}
+                                    <span class="text-gray-600 ml-2">${product.rating}</span>
+                                </div>
+                                <span class="text-gray-600">(${product.reviews.toLocaleString()} reviews)</span>
+                            </div>
+                        </div>
+
+                        <!-- Features and Shipping -->
+                        <div class="mb-4">
+                            <ul class="text-sm text-gray-600 space-y-2">
+                                ${featuresHtml}
+                            </ul>
+                        </div>
+                        
+                        <!-- Coupon if available -->
+                        ${product.coupon ? `
+                        <div class="mb-4 coupon-code bg-yellow-50 p-3 rounded-lg border-2 border-dashed border-yellow-200">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="font-semibold text-yellow-800">${product.coupon}</span>
+                                    <p class="text-sm text-yellow-700">${product.couponDescription}</p>
+                                </div>
+                                <button class="bg-yellow-500 text-white px-3 py-1.5 rounded text-sm hover:bg-yellow-600 transition-colors">
+                                    Copy Code
+                                </button>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Limited Time Deal -->
+                        ${product.limitedTime ? `
+                        <div class="mb-4 bg-red-50 p-3 rounded-lg border border-red-100">
+                            <div class="flex items-center text-red-600">
+                                <i class="fas fa-bolt mr-2"></i>
+                                <span class="font-semibold">Limited time deal - Ends soon!</span>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Visit Store Button -->
+                        <a href="${product.productUrl}" target="_blank" rel="noopener noreferrer" 
+                           class="block w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors text-center font-semibold">
+                            View on ${product.store} <i class="fas fa-external-link-alt ml-2"></i>
+                        </a>
+                    </div>
+                `;
+                
+                productGrid.appendChild(productCard);
+            });
+            
+            // Scroll to results section
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Update the login functionality
+        const login = async (email, password) => {
+            try {
+                // In a real app, this would be an actual API call
+                // const response = await fetch('http://localhost:5000/api/login', {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //     },
+                //     body: JSON.stringify({ email, password }),
+                //     credentials: 'include' // Important for sessions
+                // });
+                
+                // Simulating API response with a timeout
+                setTimeout(() => {
+                    // Mock successful login
+                    alert('Login successful!');
+                    loginModal.classList.add('hidden');
+                    loginModal.classList.remove('flex');
+                    
+                    // Update UI for logged in state
+                    loginBtn.textContent = 'Logout';
+                    signupBtn.style.display = 'none';
+                }, 1000);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Login failed. Please try again.');
+            }
+        };
+        
+        // Update the signup functionality
+        const signup = async (name, email, password) => {
+            try {
+                // In a real app, this would be an actual API call
+                // const response = await fetch('http://localhost:5000/api/signup', {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //     },
+                //     body: JSON.stringify({ name, email, password }),
+                //     credentials: 'include'
+                // });
+                
+                // Simulating API response with a timeout
+                setTimeout(() => {
+                    // Mock successful signup
+                    alert('Signup successful! Please check your email to verify your account.');
+                    signupModal.classList.add('hidden');
+                    signupModal.classList.remove('flex');
+                }, 1000);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Signup failed. Please try again.');
+            }
+        };
+        
+        // Event Listeners
+        searchBtn.addEventListener('click', () => {
+            if (searchInput.value.trim() !== '') {
+                searchProducts(searchInput.value);
+            }
+        });
+        
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && searchInput.value.trim() !== '') {
+                searchProducts(searchInput.value);
+            }
+        });
+        
+        popularSearchBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                searchInput.value = btn.textContent;
+                searchProducts(btn.textContent);
+            });
+        });
+        
+        // Modal functionality
+        loginBtn.addEventListener('click', () => {
+            // If user is already logged in, show logout option
+            if (loginBtn.textContent === 'Logout') {
+                if (confirm('Are you sure you want to logout?')) {
+                    loginBtn.textContent = 'Login';
+                    signupBtn.style.display = 'block';
+                }
+                return;
+            }
+            
+            loginModal.classList.remove('hidden');
+            loginModal.classList.add('flex');
+        });
+        
+        signupBtn.addEventListener('click', () => {
+            signupModal.classList.remove('hidden');
+            signupModal.classList.add('flex');
+        });
+        
+        closeLoginModal.addEventListener('click', () => {
+            loginModal.classList.add('hidden');
+            loginModal.classList.remove('flex');
+        });
+        
+        closeSignupModal.addEventListener('click', () => {
+            signupModal.classList.add('hidden');
+            signupModal.classList.remove('flex');
+        });
+        
+        switchToSignup.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginModal.classList.add('hidden');
+            loginModal.classList.remove('flex');
+            signupModal.classList.remove('hidden');
+            signupModal.classList.add('flex');
+        });
+        
+        switchToLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            signupModal.classList.add('hidden');
+            signupModal.classList.remove('flex');
+            loginModal.classList.remove('hidden');
+            loginModal.classList.add('flex');
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === loginModal) {
+                loginModal.classList.add('hidden');
+                loginModal.classList.remove('flex');
+            }
+            if (e.target === signupModal) {
+                signupModal.classList.add('hidden');
+                signupModal.classList.remove('flex');
+            }
+        });
+        
+        // Form submissions
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            login(email, password);
+        });
+        
+        signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            signup(name, email, password);
+        });
+        
+        // Initialize with a default search
+        window.addEventListener('DOMContentLoaded', () => {
+            searchProducts('iPhone 16');
+        });
+    </script>
+</body>
+</html>
